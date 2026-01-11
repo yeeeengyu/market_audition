@@ -464,3 +464,20 @@ def evaluate_document(document_id: str):
         risk_level=risk_level,
         issues=issues,
     )
+
+# 임베딩할 문서 넣기
+from rag import embed_and_store
+from models import EmbedRequest
+
+@app.post("/rag/documents")
+def create_rag_document(payload: EmbedRequest):
+    result = embed_and_store(
+        payload.text,
+        metadata=payload.metadata,
+    )
+
+    return {
+        "status": "ok",
+        "doc_id": result["doc_id"],
+        "embedding_dim": result["dim"],
+    }

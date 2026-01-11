@@ -1,6 +1,7 @@
+# DEPRECATED 20260111 22:54
+
 import os
 from openai import OpenAI
-
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def embed_one(text: str) -> list[float]:
@@ -41,3 +42,21 @@ def retrieve(criteria_col, query: str, doc_type: str, k: int = 3):
         }
     ]
     return list(criteria_col.aggregate(pipeline))
+
+
+# rag.py
+from db import insert_embedding
+
+def embed_and_store(text: str, metadata: dict | None = None):
+    embedding = embed_one(text)
+
+    doc_id = insert_embedding(
+        content=text,
+        embedding=embedding,
+        metadata=metadata,
+    )
+
+    return {
+        "doc_id": doc_id,
+        "dim": len(embedding),
+    }
