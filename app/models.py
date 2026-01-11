@@ -69,6 +69,9 @@ class EvaluateResponse(BaseModel):
     summary: str
     issues: List[IssueItem]
 
+class EmbedRequest(BaseModel):
+    text: str
+    metadata: Optional[Dict] = None
 
 
 # 문장분해에 사용됨
