@@ -59,7 +59,7 @@ async def create_document_image(file: UploadFile = File(...)):
     except Exception:
         ocr_text = ""
         ocr_status = "FAIL"
-        raise HTTPException(500, "OCR not succeeded")
+        raise HTTPException(status_code = 500, detail = "OCR not succeeded")
 
     documents.insert_one({
         "_id": doc_id,
