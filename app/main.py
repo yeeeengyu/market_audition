@@ -53,13 +53,22 @@ async def create_document_image(file: UploadFile = File(...)):
 
     doc_id = str(uuid4())
 
+    ocr_text = ""
+    ocr_status = "FAIL"
+
     try:
         ocr_text = run_ocr(image_bytes, file.content_type)
-        ocr_status = "SUCCESS"
-    except Exception:
-        ocr_text = ""
-        ocr_status = "FAIL"
-        raise HTTPException(status_code = 500, detail = "OCR not succeeded")
+        ocr_status = "EMPTY" if ocr_text.strip() else "SUCCESS"   # ⭐ 호출만 성공하면 SUCCES
+
+    except Exception as e:
+        import traceback
+        print("OCR ERROR TYPE:", type(e))
+        print("OCR ERROR:", e)
+        traceback.print_exc()
+
+
+    print("OCR LEN:", len(ocr_text))
+    print("OCR TEXT:", repr(ocr_text))
 
     documents.insert_one({
         "_id": doc_id,
@@ -77,3 +86,12 @@ async def create_document_image(file: UploadFile = File(...)):
         document_id=doc_id,
         status="READY"
     )
+
+@app.get("/documents/{document_id}")
+def get_document(document_id: str):
+    doc = documents.find_one({"_id": document_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    doc["document_id"] = doc.pop("_id")
+    return doc
