@@ -4,5 +4,7 @@ uvicorn==0.30.6
 pymongo==4.8.0
 python-dotenv==1.0.1
 
-openai==1.55.3
+openai==2.15.0
 python-multipart
+
+Pillow

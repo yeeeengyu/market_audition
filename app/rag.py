@@ -60,3 +60,54 @@ def embed_and_store(text: str, metadata: dict | None = None):
         "doc_id": doc_id,
         "dim": len(embedding),
     }
+
+# rag.py (추가)
+import os
+from db import embed_col
+
+def retrieve_evidence(*, query: str, types: list[str] | None = None, top_k: int = 3):
+    qvec = embed_one(query)
+    if not qvec:
+        return []
+
+    f = {}
+    if types:
+        f["metadata.type"] = {"$in": types}
+
+    pipeline = [
+        {
+            "$vectorSearch": {
+                "index": os.getenv("VECTOR_INDEX_NAME", "criteria_vector_index"),
+                "path": "embedding",
+                "queryVector": qvec,
+                "numCandidates": 200,
+                "limit": top_k,
+                **({"filter": f} if f else {}),
+            }
+        },
+        {
+            "$project": {
+                "_id": 1,
+                "content": 1,
+                "metadata": 1,
+                "score": {"$meta": "vectorSearchScore"},
+            }
+        },
+    ]
+
+    rows = list(embed_col.aggregate(pipeline))
+
+    out = []
+    for r in rows:
+        md = r.get("metadata") or {}
+        content = (r.get("content") or "").strip()
+        out.append(
+            {
+                "doc_id": str(r["_id"]),
+                "title": md.get("title"),
+                "source": md.get("source"),
+                "snippet": content[:300],
+                "score": float(r.get("score") or 0.0),
+            }
+        )
+    return out

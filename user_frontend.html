@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>설명서 평가 — MVP</title>
+  <style>
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.04);
+      --line:rgba(255,255,255,.10);
+      --text:#EAF0FF;
+      --muted:rgba(234,240,255,.72);
+      --faint:rgba(234,240,255,.55);
+      --accent:#7AA2FF;
+      --accent2:#42D392;
+      --warn:#FFCC66;
+      --bad:#FF6B6B;
+      --shadow: 0 20px 60px rgba(0,0,0,.45);
+      --r:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text); font-family:var(--sans);
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(122,162,255,.25), transparent 55%),
+        radial-gradient(700px 420px at 110% 10%, rgba(66,211,146,.16), transparent 55%),
+        radial-gradient(700px 420px at 70% 110%, rgba(255,204,102,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 70%, #070A12);
+      min-height:100vh;
+    }
+
+    /* Top bar */
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      padding:14px 16px;
+      background: linear-gradient(to bottom, rgba(7,10,18,.95), rgba(7,10,18,.70));
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .top{
+      max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background: radial-gradient(14px 14px at 30% 30%, rgba(255,255,255,.45), transparent 60%),
+                  linear-gradient(135deg, rgba(122,162,255,.95), rgba(66,211,146,.85));
+      box-shadow: 0 10px 30px rgba(122,162,255,.18);
+    }
+    .brand h1{ margin:0; font-size:14px; letter-spacing:.2px; font-weight:850; }
+    .brand .sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px; border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color:var(--muted);
+      font-size:12px;
+    }
+    .pill .dot{
+      width:8px; height:8px; border-radius:99px;
+      background: rgba(255,255,255,.25);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.04);
+    }
+    .pill.ok .dot{ background: var(--accent2); box-shadow: 0 0 0 4px rgba(66,211,146,.12); }
+    .pill.bad .dot{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,107,107,.12); }
+
+    button, input, textarea{
+      font-family:inherit; color:var(--text);
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+    }
+    button{
+      cursor:pointer;
+      font-weight:780;
+      border-color: rgba(122,162,255,.28);
+      background: rgba(122,162,255,.14);
+    }
+    button:hover{ background: rgba(122,162,255,.18); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .ghost{
+      background: rgba(255,255,255,.04);
+      border-color: var(--line);
+      font-weight:700;
+    }
+    .ghost:hover{ background: rgba(255,255,255,.07); }
+    .danger{
+      border-color: rgba(255,107,107,.35);
+      background: rgba(255,107,107,.12);
+    }
+    input::placeholder, textarea::placeholder{ color: rgba(234,240,255,.45); }
+    textarea{ width:100%; resize:vertical; min-height:140px; }
+    .mono{ font-family:var(--mono); }
+
+    /* Layout */
+    .wrap{ max-width:1100px; margin:0 auto; padding:18px 16px 50px; }
+    .hero{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:14px; align-items:stretch;
+      margin-top:10px;
+    }
+    @media (max-width: 980px){ .hero{ grid-template-columns:1fr; } }
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px 12px;
+      border-bottom:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .card .hd h2{ margin:0; font-size:13px; letter-spacing:.2px; font-weight:850; }
+    .card .bd{ padding:14px; }
+    .muted{ color:var(--muted); font-size:12px; line-height:1.5; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .sp{ flex:1; }
+
+    /* Stepper */
+    .steps{
+      display:flex; gap:10px; flex-wrap:wrap;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,.18);
+    }
+    .step{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(255,255,255,.03);
+      font-size:12px;
+      color:var(--muted);
+    }
+    .step .n{
+      width:22px; height:22px; border-radius:99px;
+      display:grid; place-items:center;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color:var(--faint);
+      font-weight:900;
+      font-family:var(--mono);
+    }
+    .step.active{
+      color:var(--text);
+      border-color: rgba(122,162,255,.35);
+      background: rgba(122,162,255,.10);
+    }
+    .step.active .n{
+      border-color: rgba(122,162,255,.45);
+      background: rgba(122,162,255,.18);
+      color: var(--text);
+    }
+    .step.done{
+      border-color: rgba(66,211,146,.35);
+      background: rgba(66,211,146,.10);
+      color: var(--text);
+    }
+    .step.done .n{
+      border-color: rgba(66,211,146,.45);
+      background: rgba(66,211,146,.18);
+      color: var(--text);
+    }
+
+    /* Input switch */
+    .switch{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:6px;
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+    }
+    .switch button{
+      padding:10px 12px;
+      border-radius: 12px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight:850;
+    }
+    .switch button.active{
+      background: rgba(122,162,255,.14);
+      border:1px solid rgba(122,162,255,.28);
+      color: var(--text);
+    }
+
+    /* Dropzone */
+    .drop{
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius: 14px;
+      background: rgba(255,255,255,.02);
+      padding:14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .drop strong{ font-size:13px; }
+    .drop .hint{ color:var(--muted); font-size:12px; }
+    .drop.drag{ border-color: rgba(122,162,255,.55); background: rgba(122,162,255,.08); }
+
+    /* Toast */
+    .toast{
+      position: fixed; right: 16px; bottom: 16px; z-index: 80;
+      display:flex; flex-direction:column; gap:10px;
+      max-width: 440px;
+    }
+    .t{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(7,10,18,.88);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
+      padding: 12px 12px;
+      display:flex; align-items:flex-start; gap:10px;
+      animation: pop .18s ease-out;
+    }
+    @keyframes pop{ from{ transform: translateY(6px); opacity:.0 } to{ transform: translateY(0); opacity:1 } }
+    .t .ic{
+      width:10px; height:10px; border-radius:99px;
+      margin-top:4px;
+      background: rgba(255,255,255,.25);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.06);
+    }
+    .t.ok .ic{ background: var(--accent2); box-shadow: 0 0 0 4px rgba(66,211,146,.14); }
+    .t.err .ic{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,107,107,.14); }
+    .t .msg{ font-size:12px; line-height:1.4; color:var(--muted); }
+    .t .msg b{ color:var(--text); }
+
+    /* Results */
+    .kpis{ display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
+    @media (max-width: 980px){ .kpis{ grid-template-columns: repeat(2, 1fr); } }
+    .kpi{
+      padding:12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.18);
+    }
+    .kpi .k{ color:var(--muted); font-size:12px; }
+    .kpi .v{ font-size:18px; font-weight:900; margin-top:6px; letter-spacing:.2px; }
+    .risk{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      font-weight:900;
+      font-size:12px;
+    }
+    .risk.low{ border-color: rgba(66,211,146,.35); background: rgba(66,211,146,.12); }
+    .risk.medium{ border-color: rgba(255,204,102,.35); background: rgba(255,204,102,.12); }
+    .risk.high{ border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.12); }
+
+    details{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.02);
+      overflow:hidden;
+    }
+    summary{
+      list-style:none;
+      cursor:pointer;
+      padding:12px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      font-weight:900; font-size:12px;
+      color: var(--text);
+      border-bottom:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+    }
+    summary::-webkit-details-marker{ display:none; }
+    .panel{ padding:12px; }
+    .issue{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(0,0,0,.16);
+      padding:12px;
+      margin-bottom:10px;
+    }
+    .issue .top{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+    }
+    .tag{
+      display:inline-flex; align-items:center; gap:7px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      font-size:12px;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+    .sev-high{ border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.12); color: var(--text); }
+    .sev-med{ border-color: rgba(255,204,102,.35); background: rgba(255,204,102,.12); color: var(--text); }
+    .sev-low{ border-color: rgba(66,211,146,.35); background: rgba(66,211,146,.12); color: var(--text); }
+    .issue h3{ margin:10px 0 6px; font-size:12px; color: var(--muted); }
+    .issue .txt{ font-size:13px; line-height:1.55; }
+    .issue .reason{ color: var(--muted); font-size:12px; line-height:1.55; }
+    pre{
+      margin:0;
+      padding:12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.30);
+      max-height: 320px;
+      overflow:auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+      font-size:12px;
+      line-height:1.45;
+      color: rgba(234,240,255,.88);
+    }
+    .hintrow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-top:10px;
+      color: var(--muted);
+      font-size:12px;
+    }
+
+    /* Modal */
+    .backdrop{
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+    .modal{
+      width:min(860px, 100%);
+      border:1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(7,10,18,.92);
+      box-shadow: 0 30px 90px rgba(0,0,0,.65);
+      overflow:hidden;
+    }
+    .modal .mh{
+      padding:14px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background: rgba(255,255,255,.03);
+    }
+    .modal .mh b{ font-size:13px; }
+    .modal .mb{ padding:14px; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 820px){ .grid2{ grid-template-columns:1fr; } }
+    .small{ font-size:12px; color:var(--muted); }
+    .sep{ height:1px; background: var(--line); margin: 12px 0; }
+
+    .spinner{
+      width:14px; height:14px;
+      border-radius: 999px;
+      border:2px solid rgba(255,255,255,.18);
+      border-top-color: rgba(255,255,255,.65);
+      animation: spin .7s linear infinite;
+      display:inline-block;
+      vertical-align:middle;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="top">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>설명서 평가</h1>
+          <div class="sub">이미지 OCR / 텍스트 입력 → 자동 분석 → 위험·과장·근거 평가</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div id="connPill" class="pill"><span class="dot"></span><span id="connText">미연결</span></div>
+        <button id="btnSettings" class="ghost">설정</button>
+        <button id="btnReset" class="danger ghost" title="현재 세션 초기화">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="steps">
+        <div id="s1" class="step active"><div class="n">1</div>입력</div>
+        <div id="s2" class="step"><div class="n">2</div>텍스트 확인</div>
+        <div id="s3" class="step"><div class="n">3</div>평가</div>
+        <div id="s4" class="step"><div class="n">4</div>결과</div>
+        <div class="sp"></div>
+        <div class="pill mono" title="내부 식별자">
+          doc_id: <span id="docIdLabel">—</span>
+        </div>
+      </div>
+
+      <div class="hero">
+        <!-- Left: input -->
+        <div class="card" style="box-shadow:none; border: none; background: transparent;">
+          <div class="hd">
+            <h2>설명서 입력</h2>
+            <div class="row">
+              <div class="switch" role="tablist" aria-label="input type">
+                <button id="tabText" class="active" type="button">텍스트</button>
+                <button id="tabImage" type="button">이미지 OCR</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bd" style="padding-top:12px;">
+            <div id="textPane">
+              <textarea id="docText" placeholder="예: 제품 특징, 사용 방법, 효능/효과, 주의사항, 가격/배송 등 설명서 내용을 붙여넣으세요."></textarea>
+              <div class="hintrow">
+                <span>팁: 과장 표현(“100%”, “즉시 효과”)이 있으면 이슈로 잡힙니다.</span>
+                <span class="mono" id="charCount">0 chars</span>
+              </div>
+              <div class="row" style="margin-top:12px;">
+                <button id="btnCreateText">설명서 업로드</button>
+                <button id="btnPasteExample" class="ghost">예시 넣기</button>
+              </div>
+            </div>
+
+            <div id="imagePane" style="display:none;">
+              <div id="drop" class="drop">
+                <div>
+                  <strong>이미지 파일을 드래그 앤 드롭</strong>
+                  <div class="hint">또는 아래에서 파일을 선택하세요 (png/jpg)</div>
+                </div>
+                <div class="row">
+                  <input id="imgFile" type="file" accept="image/*" />
+                  <button id="btnCreateImage">OCR 업로드</button>
+                </div>
+              </div>
+              <div class="muted" style="margin-top:10px;">
+                OCR 결과 텍스트가 2단계에서 표시됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: preview + actions -->
+        <div class="card" style="box-shadow:none; border: none; background: transparent;">
+          <div class="hd">
+            <h2>빠른 실행</h2>
+            <div class="row">
+              <button id="btnAnalyze" class="ghost">문장 분석</button>
+              <button id="btnEvaluate">평가 시작</button>
+            </div>
+          </div>
+          <div class="bd">
+            <div class="muted">
+              흐름: 업로드 → (자동/수동) 문장 분석 → 종합 평가 → 이슈/근거 확인
+            </div>
+
+            <div class="sep"></div>
+
+            <div class="row" style="gap:8px;">
+              <span class="risk low" id="riskBadge" style="display:none;">LOW</span>
+              <span class="tag mono" id="statusTag" style="display:none;">READY</span>
+              <span class="tag mono" id="createdAtTag" style="display:none;">created_at</span>
+            </div>
+
+            <div style="height:10px;"></div>
+
+            <div class="muted" style="margin-bottom:8px;">현재 텍스트(미리보기)</div>
+            <pre id="preview">—</pre>
+
+            <div class="row" style="margin-top:12px;">
+              <button id="btnCopyText" class="ghost">텍스트 복사</button>
+              <button id="btnRefreshDoc" class="ghost">문서 다시 불러오기</button>
+              <div class="sp"></div>
+              <button id="btnShowDebug" class="ghost">디버그</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="card" style="box-shadow:none; border:none; background: transparent;">
+        <div class="hd">
+          <h2>평가 결과</h2>
+          <div class="row">
+            <button id="btnAnalyzeEvaluate" class="ghost">분석→평가 한번에</button>
+            <button id="btnClear" class="danger ghost">결과 비우기</button>
+          </div>
+        </div>
+        <div class="bd">
+          <div id="kpiWrap" style="display:none;">
+            <div class="row" style="margin-bottom:10px;">
+              <span class="risk low" id="riskBadge2">LOW</span>
+              <span class="muted">요약</span>
+            </div>
+            <div class="kpis" id="kpis"></div>
+            <div style="height:10px;"></div>
+            <pre id="summary">—</pre>
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <details open>
+            <summary><span>이슈</span><span class="muted">문장별 문제 + 제안 + (있으면) 근거</span></summary>
+            <div class="panel">
+              <div id="issues">—</div>
+            </div>
+          </details>
+
+          <div style="height:10px;"></div>
+
+          <details>
+            <summary><span>문장 분석</span><span class="muted">kind / verification</span></summary>
+            <div class="panel">
+              <div id="sentences">—</div>
+            </div>
+          </details>
+
+          <div style="height:10px;"></div>
+
+          <details>
+            <summary><span>원본 JSON</span><span class="muted">마지막 응답</span></summary>
+            <div class="panel">
+              <pre id="raw">—</pre>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Settings modal -->
+  <div class="backdrop" id="backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="settings">
+      <div class="mh">
+        <b>설정</b>
+        <div class="row">
+          <button id="btnCloseSettings" class="ghost">닫기</button>
+        </div>
+      </div>
+      <div class="mb">
+        <div class="grid2">
+          <div class="card" style="box-shadow:none;">
+            <div class="hd"><h2>연결</h2></div>
+            <div class="bd">
+              <div class="small">API Base URL</div>
+              <input id="baseUrl" class="mono" placeholder="http://localhost:8000" style="width:100%; margin-top:8px;" />
+              <div class="row" style="margin-top:10px;">
+                <button id="btnSaveBase" class="ghost">저장</button>
+                <button id="btnHealth" class="ghost">연결 테스트</button>
+                <div class="sp"></div>
+                <span id="healthOut" class="small">—</span>
+              </div>
+              <div class="small" style="margin-top:10px;">
+                CORS가 막혀 있으면 백엔드 CORS allow_origins에 프론트 주소를 추가하세요.
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="box-shadow:none;">
+            <div class="hd"><h2>관리자 (선택)</h2></div>
+            <div class="bd">
+              <div class="small">근거 문서 업로드 (POST /rag/documents)</div>
+              <textarea id="ragText" placeholder="법률/가이드/전략 문서 텍스트"></textarea>
+              <div style="height:8px;"></div>
+              <textarea id="ragMeta" class="mono" placeholder='{"type":"policy","title":"...","source":"internal"}'></textarea>
+              <div class="row" style="margin-top:10px;">
+                <button id="btnRagUpload">업로드</button>
+                <button id="btnRagExample" class="ghost">예시 메타</button>
+                <span id="ragOut" class="small">—</span>
+              </div>
+              <div class="small" style="margin-top:10px;">
+                실제 사용자 화면에서는 보통 숨깁니다. MVP 테스트용으로만 사용하세요.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="card" style="box-shadow:none;">
+          <div class="hd"><h2>최근 문서</h2></div>
+          <div class="bd">
+            <div class="small">최근 생성한 document_id를 보관합니다 (로컬 저장).</div>
+            <div id="recent" style="margin-top:10px;">—</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="row">
+          <button id="btnClearRecent" class="danger ghost">최근 기록 삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    baseUrl: (localStorage.getItem("mvp_base_url") || "http://localhost:8000").replace(/\/+$/, ""),
+    docId: localStorage.getItem("mvp_doc_id") || "",
+    mode: "text", // text | image
+    lastJson: null
+  };
+
+  // -----------------------
+  // Toast
+  // -----------------------
+  function toast(kind, title, msg){
+    const box = $("toast");
+    const el = document.createElement("div");
+    el.className = "t " + (kind === "ok" ? "ok" : "err");
+    el.innerHTML = `<div class="ic"></div><div class="msg"><b>${escapeHtml(title)}</b><div style="margin-top:4px;">${escapeHtml(msg||"")}</div></div>`;
+    box.appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateY(6px)"; }, 2600);
+    setTimeout(() => { el.remove(); }, 3000);
+  }
+
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // -----------------------
+  // API helpers
+  // -----------------------
+  async function apiJson(method, path, body){
+    const url = state.baseUrl + path;
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await res.text();
+    let data = {};
+    try{ data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+
+    if(!res.ok){
+      const detail = data?.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : (res.statusText || "Request failed");
+      throw new Error(`${res.status} ${res.statusText} — ${detail}`);
+    }
+    return data;
+  }
+
+  async function apiUpload(path, file){
+    const url = state.baseUrl + path;
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(url, { method:"POST", body: fd });
+    const text = await res.text();
+    let data = {};
+    try{ data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+
+    if(!res.ok){
+      const detail = data?.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : (res.statusText || "Upload failed");
+      throw new Error(`${res.status} ${res.statusText} — ${detail}`);
+    }
+    return data;
+  }
+
+  function setConn(ok, msg){
+    const pill = $("connPill");
+    pill.className = "pill " + (ok ? "ok" : "bad");
+    $("connText").textContent = msg;
+  }
+
+  function setDocId(id){
+    state.docId = id || "";
+    localStorage.setItem("mvp_doc_id", state.docId);
+    $("docIdLabel").textContent = state.docId ? state.docId : "—";
+  }
+
+  function setSteps(active){
+    const ids = ["s1","s2","s3","s4"];
+    ids.forEach((sid, idx) => {
+      const el = $(sid);
+      const n = idx + 1;
+      el.classList.remove("active","done");
+      if(n < active) el.classList.add("done");
+      else if(n === active) el.classList.add("active");
+    });
+  }
+
+  function setLoading(btn, on){
+    if(!btn) return;
+    btn.disabled = !!on;
+    const orig = btn.dataset.orig || btn.textContent;
+    btn.dataset.orig = orig;
+    btn.innerHTML = on ? `<span class="spinner"></span> ${escapeHtml(orig)}` : escapeHtml(orig);
+  }
+
+  function saveRecent(docId, inputType){
+    if(!docId) return;
+    const key = "mvp_recent_docs";
+    const list = JSON.parse(localStorage.getItem(key) || "[]");
+    const now = new Date().toISOString();
+    const next = [{ docId, inputType, at: now }, ...list.filter(x => x.docId !== docId)].slice(0, 12);
+    localStorage.setItem(key, JSON.stringify(next));
+    renderRecent();
+  }
+
+  function renderRecent(){
+    const key = "mvp_recent_docs";
+    const list = JSON.parse(localStorage.getItem(key) || "[]");
+    if(!list.length){
+      $("recent").innerHTML = "<div class='small'>—</div>";
+      return;
+    }
+    $("recent").innerHTML = list.map(x => `
+      <div class="issue" style="margin-bottom:8px;">
+        <div class="row" style="margin:0;">
+          <span class="tag">${escapeHtml(x.inputType || "text")}</span>
+          <span class="tag mono">${escapeHtml(x.docId)}</span>
+          <div class="sp"></div>
+          <button class="ghost" data-open="${escapeHtml(x.docId)}">열기</button>
+        </div>
+        <div class="small" style="margin-top:8px;">${escapeHtml(x.at)}</div>
+      </div>
+    `).join("");
+
+    $("recent").querySelectorAll("button[data-open]").forEach(b => {
+      b.onclick = async () => {
+        const id = b.dataset.open;
+        setDocId(id);
+        await refreshDoc(true);
+        toast("ok","불러오기", "document_id를 세팅했습니다.");
+      };
+    });
+  }
+
+  // -----------------------
+  // Rendering
+  // -----------------------
+  function setPreview(text){
+    const t = (text || "").trim();
+    $("preview").textContent = t ? t : "—";
+  }
+
+  function clearResults(){
+    $("kpiWrap").style.display = "none";
+    $("kpis").innerHTML = "";
+    $("summary").textContent = "—";
+    $("issues").textContent = "—";
+    $("sentences").textContent = "—";
+    $("raw").textContent = "—";
+    $("riskBadge").style.display = "none";
+  }
+
+  function renderKpis(e){
+    // supports:
+    // - e.scores: {legal,fact,trust,marketing,overall}
+    // - OR legacy: e.overall, e.legal_score, ...
+    const scores = e?.scores || null;
+    const k = [];
+
+    if(scores){
+      for(const [name, val] of Object.entries(scores)){
+        k.push([name, Number(val)]);
+      }
+    } else {
+      // fallback
+      const mapping = [
+        ["overall", e?.overall],
+        ["legal", e?.legal_score],
+        ["fact", e?.fact_score],
+        ["trust", e?.trust_score],
+        ["marketing", e?.marketing_score]
+      ];
+      mapping.forEach(([n,v]) => {
+        if(v !== undefined && v !== null) k.push([n, Number(v)]);
+      });
+    }
+
+    const risk = String(e?.risk_level || "").toUpperCase() || "LOW";
+    const rcls = risk === "HIGH" ? "high" : risk === "MEDIUM" ? "medium" : "low";
+    $("riskBadge2").className = "risk " + rcls;
+    $("riskBadge2").textContent = risk;
+
+    $("kpis").innerHTML = k.map(([name,val]) => `
+      <div class="kpi">
+        <div class="k">${escapeHtml(name)}</div>
+        <div class="v">${Number.isFinite(val) ? val : "—"}</div>
+      </div>
+    `).join("");
+
+    $("summary").textContent = e?.summary ? String(e.summary) : "—";
+    $("kpiWrap").style.display = "block";
+  }
+
+  function sevClass(sev){
+    const s = String(sev || "").toUpperCase();
+    if(s === "HIGH") return "sev-high";
+    if(s === "MEDIUM") return "sev-med";
+    return "sev-low";
+  }
+
+  function renderIssues(e){
+    const issues = e?.issues || [];
+    if(!issues.length){
+      $("issues").innerHTML = "<div class='muted'>이슈 없음</div>";
+      return;
+    }
+
+    $("issues").innerHTML = issues.map((it) => {
+      const ev = it.evidence || [];
+      const evHtml = ev.length ? `
+        <details style="margin-top:10px;">
+          <summary><span>근거</span><span class="muted">${ev.length}개</span></summary>
+          <div class="panel">
+            ${ev.map(x => `
+              <div class="issue" style="margin:0 0 10px;">
+                <div class="row" style="margin:0;">
+                  <span class="tag mono">${escapeHtml(x.doc_id || "")}</span>
+                  ${x.title ? `<span class="tag">${escapeHtml(x.title)}</span>` : ""}
+                  ${x.source ? `<span class="tag">${escapeHtml(x.source)}</span>` : ""}
+                  <span class="tag mono">score=${Number(x.score || 0).toFixed(3)}</span>
+                </div>
+                <h3>snippet</h3>
+                <pre style="max-height:220px;">${escapeHtml(x.snippet || "")}</pre>
+              </div>
+            `).join("")}
+          </div>
+        </details>
+      ` : "";
+
+      return `
+        <div class="issue">
+          <div class="top">
+            <span class="tag ${sevClass(it.severity)}">${escapeHtml(String(it.severity||"LOW").toUpperCase())}</span>
+            <span class="tag">${escapeHtml(it.issue_type || "issue")}</span>
+            <span class="tag mono">idx=${escapeHtml(it.idx)}</span>
+          </div>
+
+          <h3>문장</h3>
+          <div class="txt">${escapeHtml(it.sentence || "")}</div>
+
+          <h3>이유</h3>
+          <div class="reason">${escapeHtml(it.reason || "")}</div>
+
+          ${it.suggestion ? `
+            <h3>수정 제안</h3>
+            <div class="reason">${escapeHtml(it.suggestion)}</div>
+          ` : ""}
+
+          ${evHtml}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderSentences(s){
+    const arr = s?.sentences || [];
+    if(!arr.length){
+      $("sentences").innerHTML = "<div class='muted'>—</div>";
+      return;
+    }
+
+    const rows = arr.slice(0, 80).map(x => `
+      <div class="issue" style="margin-bottom:8px;">
+        <div class="row" style="margin:0;">
+          <span class="tag mono">#${escapeHtml(x.idx)}</span>
+          <span class="tag">${escapeHtml(x.kind)}</span>
+          <span class="tag">${escapeHtml(x.verification_status)}</span>
+        </div>
+        <div class="txt" style="margin-top:8px;">${escapeHtml(x.sentence || "")}</div>
+        ${x.reason ? `<div class="small" style="margin-top:8px;">reason: ${escapeHtml(x.reason)}</div>` : ""}
+      </div>
+    `).join("");
+
+    $("sentences").innerHTML = rows + (arr.length > 80 ? `<div class="small">(${arr.length}개 중 80개만 표시)</div>` : "");
+  }
+
+  function setDocMeta(doc){
+    if(!doc) return;
+    if(doc.status){
+      $("statusTag").style.display = "inline-flex";
+      $("statusTag").textContent = String(doc.status);
+    }
+    if(doc.created_at){
+      $("createdAtTag").style.display = "inline-flex";
+      $("createdAtTag").textContent = String(doc.created_at).slice(0, 19).replace("T"," ");
+    }
+  }
+
+  // -----------------------
+  // Core actions
+  // -----------------------
+  async function health(){
+    try{
+      const out = await apiJson("GET","/",null);
+      setConn(true, "연결됨");
+      return out;
+    }catch(e){
+      setConn(false, "미연결");
+      throw e;
+    }
+  }
+
+  async function refreshDoc(silent=false){
+    if(!state.docId) throw new Error("document_id가 없습니다.");
+    const doc = await apiJson("GET", `/document/${encodeURIComponent(state.docId)}`, null);
+    state.lastJson = doc;
+    $("raw").textContent = JSON.stringify(doc, null, 2);
+
+    // preview prefers raw_text then ocr_text
+    const txt = doc.raw_text || doc.ocr_text || "";
+    setPreview(txt);
+    setDocMeta(doc);
+
+    if(!silent){
+      toast("ok","문서 조회", "문서를 다시 불러왔습니다.");
+    }
+    return doc;
+  }
+
+  async function createFromText(){
+    const text = $("docText").value;
+    if(!text.trim()) throw new Error("텍스트가 비었습니다.");
+    setSteps(1);
+    const data = await apiJson("POST", "/document/text", { text });
+    state.lastJson = data;
+    $("raw").textContent = JSON.stringify(data, null, 2);
+    setDocId(data.document_id || "");
+    saveRecent(state.docId, "text");
+    setSteps(2);
+    await refreshDoc(true);
+    toast("ok","업로드 완료", "텍스트 설명서를 생성했습니다.");
+  }
+
+  async function createFromImage(file){
+    if(!file) throw new Error("이미지를 선택하세요.");
+    setSteps(1);
+    const data = await apiUpload("/document/image", file);
+    state.lastJson = data;
+    $("raw").textContent = JSON.stringify(data, null, 2);
+    setDocId(data.document_id || "");
+    saveRecent(state.docId, "image");
+    setSteps(2);
+    await refreshDoc(true);
+    toast("ok","OCR 완료", "이미지 설명서를 OCR로 생성했습니다.");
+  }
+
+  async function analyze(){
+    if(!state.docId) throw new Error("document_id가 없습니다.");
+    setSteps(3);
+    const out = await apiJson("POST", `/document/${encodeURIComponent(state.docId)}/sentences/analyze`, null);
+    state.lastJson = out;
+    $("raw").textContent = JSON.stringify(out, null, 2);
+    renderSentences(out);
+    toast("ok","문장 분석", "문장 분석 결과를 저장했습니다.");
+    return out;
+  }
+
+  async function evaluate(){
+    if(!state.docId) throw new Error("document_id가 없습니다.");
+    setSteps(3);
+    const out = await apiJson("POST", `/document/${encodeURIComponent(state.docId)}/evaluate`, null);
+    state.lastJson = out;
+    $("raw").textContent = JSON.stringify(out, null, 2);
+    renderKpis(out);
+    renderIssues(out);
+
+    // small badge on preview card
+    const risk = String(out?.risk_level || "").toUpperCase() || "LOW";
+    const rcls = risk === "HIGH" ? "high" : risk === "MEDIUM" ? "medium" : "low";
+    $("riskBadge").style.display = "inline-flex";
+    $("riskBadge").className = "risk " + rcls;
+    $("riskBadge").textContent = risk;
+
+    setSteps(4);
+    toast("ok","평가 완료", "결과를 확인하세요.");
+    return out;
+  }
+
+  async function analyzeThenEvaluate(){
+    await analyze();
+    await evaluate();
+  }
+
+  // -----------------------
+  // Settings / Admin
+  // -----------------------
+  function openSettings(){
+    $("backdrop").style.display = "flex";
+    $("backdrop").setAttribute("aria-hidden","false");
+    $("baseUrl").value = state.baseUrl;
+    renderRecent();
+  }
+  function closeSettings(){
+    $("backdrop").style.display = "none";
+    $("backdrop").setAttribute("aria-hidden","true");
+  }
+
+  async function ragUpload(){
+    const text = $("ragText").value.trim();
+    if(!text) throw new Error("RAG 텍스트가 비었습니다.");
+
+    let meta = null;
+    const m = $("ragMeta").value.trim();
+    if(m) meta = JSON.parse(m);
+
+    const out = await apiJson("POST", "/rag/documents", { text, metadata: meta });
+    $("ragOut").textContent = `OK doc_id=${out.doc_id || ""}`;
+    toast("ok","업로드", "근거 문서를 업로드했습니다.");
+  }
+
+  // -----------------------
+  // Events wiring
+  // -----------------------
+  function setMode(mode){
+    state.mode = mode;
+    $("tabText").classList.toggle("active", mode==="text");
+    $("tabImage").classList.toggle("active", mode==="image");
+    $("textPane").style.display = mode==="text" ? "block" : "none";
+    $("imagePane").style.display = mode==="image" ? "block" : "none";
+  }
+
+  $("tabText").onclick = () => setMode("text");
+  $("tabImage").onclick = () => setMode("image");
+
+  $("docText").addEventListener("input", () => {
+    $("charCount").textContent = `${$("docText").value.length} chars`;
+  });
+
+  $("btnPasteExample").onclick = () => {
+    $("docText").value = "프리미엄 비타민C 세럼\n- 단기간에 즉시 효과!\n- 100% 만족 보장\n- 식약처 인증 성분 함유\n사용법: 아침/저녁 2회, 세안 후 2~3방울 도포\n주의사항: 개인차가 있을 수 있습니다.";
+    $("charCount").textContent = `${$("docText").value.length} chars`;
+    toast("ok","예시", "예시 텍스트를 넣었습니다.");
+  };
+
+  $("btnCreateText").onclick = async () => {
+    const btn = $("btnCreateText");
+    setLoading(btn, true);
+    try{
+      await createFromText();
+    }catch(e){
+      toast("err","실패", e.message || String(e));
+    }finally{
+      setLoading(btn, false);
+    }
+  };
+
+  $("btnCreateImage").onclick = async () => {
+    const btn = $("btnCreateImage");
+    setLoading(btn, true);
+    try{
+      const f = $("imgFile").files?.[0];
+      await createFromImage(f);
+    }catch(e){
+      toast("err","실패", e.message || String(e));
+    }finally{
+      setLoading(btn, false);
+    }
+  };
+
+  $("btnRefreshDoc").onclick = async () => {
+    const btn = $("btnRefreshDoc");
+    setLoading(btn, true);
+    try{
+      await refreshDoc();
+      setSteps(2);
+    }catch(e){
+      toast("err","실패", e.message || String(e));
+    }finally{
+      setLoading(btn, false);
+    }
+  };
+
+  $("btnAnalyze").onclick = async () => {
+    const btn = $("btnAnalyze");
+    setLoading(btn, true);
+    try{ await analyze(); } catch(e){ toast("err","실패", e.message || String(e)); } finally{ setLoading(btn, false); }
+  };
+
+  $("btnEvaluate").onclick = async () => {
+    const btn = $("btnEvaluate");
+    setLoading(btn, true);
+    try{ await evaluate(); } catch(e){ toast("err","실패", e.message || String(e)); } finally{ setLoading(btn, false); }
+  };
+
+  $("btnAnalyzeEvaluate").onclick = async () => {
+    const btn = $("btnAnalyzeEvaluate");
+    setLoading(btn, true);
+    try{ await analyzeThenEvaluate(); } catch(e){ toast("err","실패", e.message || String(e)); } finally{ setLoading(btn, false); }
+  };
+
+  $("btnClear").onclick = () => {
+    clearResults();
+    toast("ok","초기화", "결과를 비웠습니다.");
+  };
+
+  $("btnCopyText").onclick = async () => {
+    try{
+      const t = $("preview").textContent;
+      if(!t || t==="—") throw new Error("복사할 텍스트가 없습니다.");
+      await navigator.clipboard.writeText(t);
+      toast("ok","복사", "텍스트를 복사했습니다.");
+    }catch(e){
+      toast("err","실패", e.message || String(e));
+    }
+  };
+
+  $("btnShowDebug").onclick = () => {
+    const el = $("raw");
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast("ok","디버그", "원본 JSON으로 이동했습니다.");
+  };
+
+  $("btnSettings").onclick = openSettings;
+  $("btnCloseSettings").onclick = closeSettings;
+  $("backdrop").addEventListener("click", (e) => {
+    if(e.target === $("backdrop")) closeSettings();
+  });
+
+  $("btnSaveBase").onclick = () => {
+    const v = $("baseUrl").value.trim().replace(/\/+$/, "");
+    if(!v){ toast("err","실패","Base URL이 비었습니다."); return; }
+    state.baseUrl = v;
+    localStorage.setItem("mvp_base_url", state.baseUrl);
+    toast("ok","저장", "Base URL을 저장했습니다.");
+  };
+
+  $("btnHealth").onclick = async () => {
+    const btn = $("btnHealth");
+    setLoading(btn, true);
+    try{
+      state.baseUrl = $("baseUrl").value.trim().replace(/\/+$/, "") || state.baseUrl;
+      localStorage.setItem("mvp_base_url", state.baseUrl);
+      const out = await health();
+      $("healthOut").textContent = "OK";
+      toast("ok","연결", "백엔드 연결이 정상입니다.");
+    }catch(e){
+      $("healthOut").textContent = "FAIL";
+      toast("err","연결 실패", e.message || String(e));
+    }finally{
+      setLoading(btn, false);
+    }
+  };
+
+  $("btnRagExample").onclick = () => {
+    $("ragMeta").value = JSON.stringify({ type:"policy", title:"마케팅 4C/4P", source:"internal" }, null, 2);
+    toast("ok","예시", "메타데이터 예시를 넣었습니다.");
+  };
+
+  $("btnRagUpload").onclick = async () => {
+    const btn = $("btnRagUpload");
+    setLoading(btn, true);
+    try{
+      await ragUpload();
+    }catch(e){
+      toast("err","실패", e.message || String(e));
+    }finally{
+      setLoading(btn, false);
+    }
+  };
+
+  $("btnClearRecent").onclick = () => {
+    localStorage.removeItem("mvp_recent_docs");
+    renderRecent();
+    toast("ok","삭제", "최근 기록을 삭제했습니다.");
+  };
+
+  $("btnReset").onclick = () => {
+    setDocId("");
+    clearResults();
+    setPreview("");
+    $("docText").value = "";
+    $("imgFile").value = "";
+    $("statusTag").style.display = "none";
+    $("createdAtTag").style.display = "none";
+    toast("ok","초기화", "현재 세션을 초기화했습니다.");
+    setSteps(1);
+  };
+
+  // Dropzone behavior
+  const drop = $("drop");
+  ["dragenter","dragover"].forEach(evt => drop.addEventListener(evt, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    drop.classList.add("drag");
+  }));
+  ["dragleave","drop"].forEach(evt => drop.addEventListener(evt, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    drop.classList.remove("drag");
+  }));
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files?.[0];
+    if(!f) return;
+    $("imgFile").files = e.dataTransfer.files;
+    toast("ok","파일 선택", f.name);
+  });
+
+  // Init
+  (async function init(){
+    $("baseUrl").value = state.baseUrl;
+    setDocId(state.docId);
+    renderRecent();
+    setMode("text");
+    clearResults();
+
+    try{
+      await health();
+    }catch(_){
+      // silent
+    }
+
+    if(state.docId){
+      try{
+        await refreshDoc(true);
+        setSteps(2);
+      }catch(_){
+        // ignore
+      }
+    }
+  })();
+</script>
+</body>
+</html>

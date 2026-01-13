@@ -13,7 +13,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from db import documents, sentence_analysis
-from ocr import run_ocr
+from ocr import run_ocr, run_ocr_tiled
 from models import (
     DocumentCreateResponse,
     DocumentResponse,
@@ -54,17 +54,44 @@ def now_utc():
 
 
 def split_sentences(text: str) -> List[str]:
-    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
-    out: List[str] = []
+    """
+    OCR 텍스트를 '문장처럼 보이는 단위'로 쪼갠 다음,
+    5개씩 묶어서(블록) 반환한다.
+    """
+    t = (text or "").replace("\r\n", "\n").strip()
+    if not t:
+        return []
 
+    # OCR 노이즈 정리
+    t = t.replace("```", "")  # 코드펜스 제거(내용은 유지)
+    lines = []
+    for ln in t.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        if s == "빈 문자열":
+            continue
+        lines.append(s)
+
+    # 1차: 줄 단위로 문장 후보 생성 + 2차: .?! 기준 추가 분리
+    sents: List[str] = []
     for ln in lines:
-        parts = re.split(r"(?<=[\.\?\!])\s+", ln)
+        parts = re.split(r"(?<=[\.\?\!])\s+|(?<=[\.\?\!])(?=\S)", ln)
         for p in parts:
             p = p.strip()
-            if p:
-                out.append(p)
+            if len(p) >= 2:
+                sents.append(p)
 
-    return out
+    if not sents:
+        return []
+
+    # ✅ 5개씩 묶어서 "블록"으로 반환
+    block_size = 5
+    blocks: List[str] = []
+    for i in range(0, len(sents), block_size):
+        blocks.append("\n".join(sents[i:i + block_size]).strip())
+
+    return blocks
 
 
 def analyze_sentence(s: str):
@@ -89,7 +116,7 @@ def analyze_sentence(s: str):
         if has_source and has_id_like:
             return kind, "VERIFIED", None
 
-        return kind, "UNVERIFIED", "검증 가능한 주장이나 출처/증빙이 문장에 포함되지 않음"
+        return kind, "UNVERIFIED", "검증 가능한 주장이나 출처/증빙이 블록(5문장 묶음)에 포함되지 않음"
 
     if is_opinion:
         return "OPINION", "NOT_APPLICABLE", None
@@ -175,7 +202,7 @@ async def create_document_image(file: UploadFile = File(...)):
     ocr_status = "FAIL"
 
     try:
-        ocr_text = run_ocr(image_bytes, file.content_type)
+        ocr_text = run_ocr_tiled(image_bytes, file.content_type)
         # ✅ 정상 로직: 텍스트 있으면 SUCCESS, 없으면 EMPTY
         ocr_status = "SUCCESS" if ocr_text.strip() else "EMPTY"
     except Exception as e:
@@ -192,7 +219,7 @@ async def create_document_image(file: UploadFile = File(...)):
             "ocr_engine": "gpt-4o-mini",
             "ocr_status": ocr_status,
             "status": "READY",
-            "created_at": now_utc(),
+            "created_at": now_utc().isoformat(),
         }
     )
 
@@ -329,6 +356,16 @@ def _attach_evidence(issue_type: str, sentence: str):
     except Exception:
         return []
 
+def has_id_near(blocks: list[str], i: int, window: int = 1) -> bool:
+    start = max(0, i - window)
+    end = min(len(blocks), i + window + 1)
+    neighborhood = " ".join(blocks[start:end])
+
+    if _has_id_like(neighborhood):
+        return True
+
+    low = neighborhood.lower()
+    return ("kipris" in low) or ("특허정보넷" in neighborhood) or ("특허청" in neighborhood)
 
 @app.post("/document/{document_id}/evaluate", response_model=EvaluateResponse)
 def evaluate_document(document_id: str):
@@ -345,9 +382,11 @@ def evaluate_document(document_id: str):
     if not rows:
         rows = upsert_sentence_analysis(document_id, raw_text)
 
+    blocks = [r["sentence"] for r in rows]  # ✅ 이게 blocks        
+
     issues: list[IssueItem] = []
 
-    for r in rows:
+    for pos, r in enumerate(rows):
         idx = r["idx"]
         s = r["sentence"]
         kind = r.get("kind")
@@ -379,7 +418,7 @@ def evaluate_document(document_id: str):
                 )
             )
 
-        if _contains_any(s, CERT_TERMS) and not _has_id_like(s):
+        if _contains_any(s, CERT_TERMS) and not has_id_near(blocks, pos, window=1):
             issues.append(
                 IssueItem(
                     idx=idx,
@@ -418,11 +457,11 @@ def evaluate_document(document_id: str):
                 )
             )
 
-    legal_score = 100
+    LEGAL_SCORE = 100
     for it in issues:
         if it.issue_type == "LEGAL_RISK":
-            legal_score -= 25 if it.severity == "HIGH" else 12 if it.severity == "MEDIUM" else 6
-    legal_score = max(0, min(100, legal_score))
+            LEGAL_SCORE -= 25 if it.severity == "HIGH" else 12 if it.severity == "MEDIUM" else 6
+    LEGAL_SCORE = max(0, min(100, LEGAL_SCORE))
 
     fact_claims = [r for r in rows if r.get("kind") == "FACT_CLAIM"]
     unverified = [r for r in fact_claims if r.get("verification_status") == "UNVERIFIED"]
@@ -435,33 +474,38 @@ def evaluate_document(document_id: str):
 
     marketing_score = compute_marketing_score(raw_text)
 
-    trust_score = int((legal_score * 0.45) + (fact_score * 0.45) + 10)
+    trust_score = int((LEGAL_SCORE * 0.45) + (fact_score * 0.45) + 10)
     if not _contains_any(raw_text, DISCLAIMERS) and any(i.issue_type == "LEGAL_RISK" for i in issues):
         trust_score -= 10
     hype_cnt = sum(1 for i in issues if i.issue_type == "TRUST_OVERCLAIM")
     trust_score -= min(10, hype_cnt * 3)
     trust_score = max(0, min(100, trust_score))
 
-    overall = int(legal_score * 0.35 + fact_score * 0.25 + trust_score * 0.25 + marketing_score * 0.15)
+    overall = int(LEGAL_SCORE * 0.35 + fact_score * 0.25 + trust_score * 0.25 + marketing_score * 0.15)
     overall = max(0, min(100, overall))
 
     high_legal = any(i.issue_type == "LEGAL_RISK" and i.severity == "HIGH" for i in issues)
-    if high_legal or legal_score < 60:
+    if high_legal or LEGAL_SCORE < 60:
         risk_level = "HIGH"
-    elif legal_score < 80 or fact_score < 70:
+    elif LEGAL_SCORE < 80 or fact_score < 70:
         risk_level = "MEDIUM"
     else:
         risk_level = "LOW"
 
+    scores = {
+        "legal": LEGAL_SCORE,
+        "fact": fact_score,
+        "trust": trust_score,
+        "marketing": marketing_score,
+        "overall": overall,
+    }
+    summary = f"legal={LEGAL_SCORE}, fact={fact_score}, trust={trust_score}, marketing={marketing_score}, overall={overall}"
+
     return EvaluateResponse(
         document_id=document_id,
-        overall=overall,
-        overall_score=overall,  # 모델이 둘 중 뭐 쓰든 안전하게
-        legal_score=legal_score,
-        fact_score=fact_score,
-        trust_score=trust_score,
-        marketing_score=marketing_score,
+        scores=scores,
         risk_level=risk_level,
+        summary=summary,
         issues=issues,
     )
 

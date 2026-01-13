@@ -24,7 +24,7 @@ class DocumentResponse(BaseModel):
     input_type: str
     raw_text: str
     status: str
-    created_at: str
+    created_at: datetime
 
     image_filename: Optional[str] = None
     ocr_text: Optional[str] = None

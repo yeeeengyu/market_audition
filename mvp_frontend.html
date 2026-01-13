@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketing Doc Evaluator (MVP)</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #121a2a;
+      --card2: #0f1626;
+      --text: #e7eefc;
+      --muted: #a8b3cf;
+      --line: rgba(255,255,255,.08);
+      --accent: #7aa2ff;
+      --good: #42d392;
+      --warn: #ffcc66;
+      --bad: #ff6b6b;
+      --chip: rgba(122,162,255,.12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 700px at 20% -10%, rgba(122,162,255,.18), transparent 60%),
+                  radial-gradient(1000px 600px at 110% 10%, rgba(66,211,146,.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+    }
+    header {
+      padding: 20px 20px 10px;
+      position: sticky;
+      top: 0;
+      background: linear-gradient(to bottom, rgba(11,15,25,.92), rgba(11,15,25,.70));
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      z-index: 10;
+    }
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .title h1 { margin: 0; font-size: 18px; font-weight: 750; letter-spacing: .2px; }
+    .title .sub { color: var(--muted); font-size: 12px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .row label { font-size: 12px; color: var(--muted); }
+    input, textarea, select, button {
+      font-family: inherit;
+      color: var(--text);
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    input::placeholder, textarea::placeholder { color: rgba(168,179,207,.55); }
+    textarea { width: 100%; min-height: 120px; resize: vertical; }
+    button {
+      cursor: pointer;
+      background: rgba(122,162,255,.14);
+      border-color: rgba(122,162,255,.28);
+      font-weight: 650;
+    }
+    button:hover { background: rgba(122,162,255,.18); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .ghost {
+      background: rgba(255,255,255,.04);
+      border-color: var(--line);
+      font-weight: 600;
+    }
+    .ghost:hover { background: rgba(255,255,255,.07); }
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+
+    main { padding: 16px 20px 40px; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 520px) 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: linear-gradient(180deg, rgba(18,26,42,.92), rgba(15,22,38,.92));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 12px 34px rgba(0,0,0,.24);
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: .2px;
+    }
+    details { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.02); }
+    details + details { margin-top: 10px; }
+    summary {
+      cursor: pointer;
+      padding: 12px 12px;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      user-select: none;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      font-weight: 700;
+    }
+    summary::-webkit-details-marker { display: none; }
+    .panel { padding: 12px; }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      background: var(--chip);
+      border: 1px solid rgba(122,162,255,.22);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    .chip.good { border-color: rgba(66,211,146,.35); background: rgba(66,211,146,.10); }
+    .chip.warn { border-color: rgba(255,204,102,.35); background: rgba(255,204,102,.10); }
+    .chip.bad  { border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.10); }
+
+    .mono { font-family: var(--mono); }
+    pre {
+      margin: 0;
+      padding: 12px;
+      background: rgba(0,0,0,.30);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: auto;
+      max-height: 420px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 12px;
+    }
+    th { color: var(--muted); font-weight: 750; }
+    td .sub { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .badge.low { border-color: rgba(66,211,146,.35); background: rgba(66,211,146,.10); }
+    .badge.med { border-color: rgba(255,204,102,.35); background: rgba(255,204,102,.10); }
+    .badge.high { border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.10); }
+
+    .rightTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .tiny { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <h1>Marketing Doc Evaluator — MVP Front</h1>
+    <div class="sub">텍스트/이미지 입력 → 문장 분석 → 종합 평가 (+RAG 근거 시드 업로드)</div>
+  </div>
+
+  <div class="row">
+    <label for="baseUrl">API Base URL</label>
+    <input id="baseUrl" style="min-width: 320px" placeholder="http://localhost:8001" />
+    <button id="btnHealth" class="ghost">Health</button>
+    <span id="healthStatus" class="tiny">—</span>
+
+    <span style="flex:1"></span>
+
+    <label for="docId">Current document_id</label>
+    <input id="docId" class="mono" style="min-width: 320px" placeholder="uuid..." />
+    <button id="btnSetDoc" class="ghost">Set</button>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <section class="card">
+      <h2>Controls</h2>
+
+      <details open>
+        <summary>
+          <span>1) RAG 지식(근거) 업로드</span>
+          <span class="tiny">POST /rag/documents</span>
+        </summary>
+        <div class="panel">
+          <div class="split">
+            <div>
+              <div class="tiny" style="margin-bottom:6px;">text</div>
+              <textarea id="ragText" placeholder="근거로 삼을 문서를 붙여넣으세요 (법률/가이드/전략 등)"></textarea>
+            </div>
+            <div>
+              <div class="tiny" style="margin-bottom:6px;">metadata (JSON, optional)</div>
+              <textarea id="ragMeta" class="mono" placeholder='{"domain":"product_description","document_type":"strategy","source":"manual","title":"..."}'></textarea>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btnRagUpload">Upload</button>
+            <button id="btnRagMetaExample" class="ghost">Example metadata</button>
+          </div>
+          <div id="ragUploadResult" class="tiny">—</div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>
+          <span>2) 설명서 입력</span>
+          <span class="tiny">POST /document/text | /document/image</span>
+        </summary>
+        <div class="panel">
+          <div class="tiny" style="margin-bottom:6px;">Text input</div>
+          <textarea id="docText" placeholder="평가할 설명서를 붙여넣으세요"></textarea>
+          <div class="row">
+            <button id="btnCreateText">Create (Text)</button>
+            <button id="btnClearText" class="ghost">Clear</button>
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <div class="tiny" style="margin-bottom:6px;">Image OCR input</div>
+          <input id="docImage" type="file" accept="image/*" />
+          <div class="row">
+            <button id="btnCreateImage">Create (Image OCR)</button>
+          </div>
+
+          <div id="docCreateResult" class="tiny">—</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>3) 문장 분석/조회</span>
+          <span class="tiny">POST/GET /document/{id}/sentences</span>
+        </summary>
+        <div class="panel">
+          <div class="row">
+            <button id="btnAnalyze">Analyze & Store</button>
+            <button id="btnGetSentences" class="ghost">Get Sentences</button>
+          </div>
+          <div class="tiny">분석은 DB에 최신 결과로 덮어씁니다.</div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>
+          <span>4) 종합 평가</span>
+          <span class="tiny">POST /document/{id}/evaluate</span>
+        </summary>
+        <div class="panel">
+          <div class="row">
+            <button id="btnEvaluate">Evaluate</button>
+            <button id="btnAnalyzeThenEvaluate" class="ghost">Analyze → Evaluate</button>
+          </div>
+          <div class="tiny">이슈/점수/리스크 레벨 + (가능하면) 근거 스니펫을 표시합니다.</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>5) 문서 조회</span>
+          <span class="tiny">GET /document/{id}</span>
+        </summary>
+        <div class="panel">
+          <div class="row">
+            <button id="btnGetDoc">Get Document</button>
+          </div>
+        </div>
+      </details>
+
+    </section>
+
+    <!-- RIGHT: outputs -->
+    <section class="card">
+      <div class="rightTop">
+        <h2 style="margin:0;">Output</h2>
+        <div class="row" style="margin:0;">
+          <button id="btnClearOut" class="ghost">Clear</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:0;">
+        <span class="tiny">Last request:</span>
+        <span id="lastReq" class="tiny mono">—</span>
+      </div>
+
+      <div style="height:10px;"></div>
+
+      <div id="scoreArea" style="display:none; margin-bottom: 12px;">
+        <div class="row" style="margin-top:0;">
+          <span class="tiny">Risk</span>
+          <span id="riskBadge" class="badge">—</span>
+        </div>
+        <div class="chips" id="scoreChips" style="margin-top:10px;"></div>
+        <div style="height:10px;"></div>
+        <div class="tiny">summary</div>
+        <pre id="summaryPre"></pre>
+      </div>
+
+      <details open>
+        <summary><span>Issues</span><span class="tiny">Evaluate 결과</span></summary>
+        <div class="panel">
+          <div id="issuesArea" class="tiny">—</div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span>Sentences</span><span class="tiny">Analyze/Get 결과</span></summary>
+        <div class="panel">
+          <div id="sentencesArea" class="tiny">—</div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span>Document</span><span class="tiny">Get Document</span></summary>
+        <div class="panel">
+          <div id="docArea" class="tiny">—</div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span>Raw JSON</span><span class="tiny">마지막 응답 원본</span></summary>
+        <div class="panel">
+          <pre id="rawJson">—</pre>
+        </div>
+      </details>
+
+      <details>
+        <summary><span>Errors</span><span class="tiny">마지막 에러</span></summary>
+        <div class="panel">
+          <pre id="errors">—</pre>
+        </div>
+      </details>
+
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    baseUrl: localStorage.getItem("apiBaseUrl") || "http://localhost:8000",
+    docId: localStorage.getItem("currentDocId") || "",
+  };
+
+  $("baseUrl").value = state.baseUrl;
+  $("docId").value = state.docId;
+
+  function setLastReq(method, path) {
+    $("lastReq").textContent = `${method} ${path}`;
+  }
+
+  function setErr(err) {
+    const msg = (typeof err === "string") ? err : (err?.stack || err?.message || JSON.stringify(err, null, 2));
+    $("errors").textContent = msg;
+  }
+
+  function clearErr() { $("errors").textContent = "—"; }
+
+  function pretty(obj) { return JSON.stringify(obj, null, 2); }
+
+  function setRaw(obj) { $("rawJson").textContent = pretty(obj); }
+
+  function setDocId(id) {
+    state.docId = id || "";
+    $("docId").value = state.docId;
+    localStorage.setItem("currentDocId", state.docId);
+  }
+
+  function setBaseUrl(url) {
+    state.baseUrl = (url || "").replace(/\/+$/, "");
+    $("baseUrl").value = state.baseUrl;
+    localStorage.setItem("apiBaseUrl", state.baseUrl);
+  }
+
+  async function fetchJson(method, path, body) {
+    clearErr();
+    const url = state.baseUrl + path;
+    setLastReq(method, path);
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const text = await res.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; }
+    catch { data = { raw: text }; }
+
+    if (!res.ok) {
+      const detail = data?.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : (res.statusText || "Request failed");
+      throw new Error(`${res.status} ${res.statusText} — ${detail}`);
+    }
+
+    return data;
+  }
+
+  async function fetchUpload(path, file) {
+    clearErr();
+    const url = state.baseUrl + path;
+    setLastReq("POST", path);
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const res = await fetch(url, { method: "POST", body: fd });
+    const text = await res.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; }
+    catch { data = { raw: text }; }
+
+    if (!res.ok) {
+      const detail = data?.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : (res.statusText || "Upload failed");
+      throw new Error(`${res.status} ${res.statusText} — ${detail}`);
+    }
+
+    return data;
+  }
+
+  function renderSentences(data) {
+    if (!data?.sentences?.length) return "<div class='tiny'>문장 없음</div>";
+
+    const rows = data.sentences.map(s => `
+      <tr>
+        <td class="mono">${s.idx}</td>
+        <td>
+          <div>${escapeHtml(s.sentence)}</div>
+          ${s.reason ? `<div class="sub">reason: ${escapeHtml(s.reason)}</div>` : ""}
+        </td>
+        <td class="mono">${escapeHtml(s.kind)}</td>
+        <td class="mono">${escapeHtml(s.verification_status)}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <table>
+        <thead><tr><th>#</th><th>sentence</th><th>kind</th><th>verify</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function severityChip(sev) {
+    const v = (sev || "").toUpperCase();
+    if (v === "HIGH") return "chip bad";
+    if (v === "MEDIUM") return "chip warn";
+    return "chip good";
+  }
+
+  function renderIssues(data) {
+    const issues = data?.issues || [];
+    if (!issues.length) return "<div class='tiny'>이슈 없음</div>";
+
+    return issues.map((it, i) => {
+      const ev = it.evidence || [];
+      const evHtml = ev.length ? `
+        <details style="margin-top:10px;">
+          <summary><span>Evidence (${ev.length})</span><span class="tiny">RAG snippet</span></summary>
+          <div class="panel">
+            ${ev.map(e => `
+              <div style="padding:10px; border:1px solid var(--line); border-radius:12px; background: rgba(0,0,0,.18); margin-bottom:8px;">
+                <div class="row" style="margin-top:0;">
+                  <span class="chip">${escapeHtml(e.doc_id)}</span>
+                  ${e.title ? `<span class="chip">${escapeHtml(e.title)}</span>` : ""}
+                  ${e.source ? `<span class="chip">${escapeHtml(e.source)}</span>` : ""}
+                  <span class="chip">score=${Number(e.score || 0).toFixed(3)}</span>
+                </div>
+                <div class="tiny" style="margin:6px 0 0;">snippet</div>
+                <pre style="max-height: 220px;">${escapeHtml(e.snippet || "")}</pre>
+              </div>
+            `).join("")}
+          </div>
+        </details>
+      ` : "";
+
+      return `
+        <div style="padding:12px; border:1px solid var(--line); border-radius:14px; background: rgba(0,0,0,.16); margin-bottom:10px;">
+          <div class="row" style="margin-top:0;">
+            <span class="${severityChip(it.severity)}">${escapeHtml(it.severity)}</span>
+            <span class="chip">${escapeHtml(it.issue_type)}</span>
+            <span class="chip mono">idx=${it.idx}</span>
+          </div>
+          <div style="margin-top:8px;"><b>sentence</b></div>
+          <div style="margin-top:4px;">${escapeHtml(it.sentence)}</div>
+
+          <div style="margin-top:10px;"><b>reason</b></div>
+          <div style="margin-top:4px; color: var(--muted);">${escapeHtml(it.reason)}</div>
+
+          ${it.suggestion ? `
+            <div style="margin-top:10px;"><b>suggestion</b></div>
+            <div style="margin-top:4px; color: var(--muted);">${escapeHtml(it.suggestion)}</div>
+          ` : ""}
+
+          ${evHtml}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderDoc(data) {
+    if (!data || !data.document_id) return "<div class='tiny'>—</div>";
+
+    const items = [
+      ["document_id", data.document_id],
+      ["input_type", data.input_type],
+      ["status", data.status],
+      ["created_at", data.created_at],
+      ["image_filename", data.image_filename],
+      ["ocr_engine", data.ocr_engine],
+      ["ocr_status", data.ocr_status],
+    ].filter(([k,v]) => v !== undefined && v !== null && v !== "");
+
+    const table = `
+      <table>
+        <thead><tr><th>field</th><th>value</th></tr></thead>
+        <tbody>
+          ${items.map(([k,v]) => `<tr><td class="mono">${escapeHtml(k)}</td><td class="mono">${escapeHtml(String(v))}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    `;
+
+    const raw = (data.raw_text || "").trim();
+    const rawPre = raw ? `<div class="tiny" style="margin-top:10px;">raw_text</div><pre>${escapeHtml(raw)}</pre>` : "";
+
+    return table + rawPre;
+  }
+
+  function renderScores(data) {
+    const scores = data?.scores || null;
+    if (!scores) return;
+
+    const risk = (data?.risk_level || "").toUpperCase();
+    const badge = $("riskBadge");
+    badge.className = "badge " + (risk === "HIGH" ? "high" : risk === "MEDIUM" ? "med" : "low");
+    badge.textContent = risk || "—";
+
+    const chips = Object.entries(scores).map(([k,v]) => {
+      const vv = Number(v);
+      const cls = vv >= 85 ? "chip good" : vv >= 70 ? "chip warn" : "chip bad";
+      return `<span class="${cls}">${escapeHtml(k)}=${vv}</span>`;
+    }).join("");
+
+    $("scoreChips").innerHTML = chips;
+    $("summaryPre").textContent = data?.summary ? String(data.summary) : "";
+    $("scoreArea").style.display = "block";
+  }
+
+  function clearOutput() {
+    $("rawJson").textContent = "—";
+    $("issuesArea").textContent = "—";
+    $("sentencesArea").textContent = "—";
+    $("docArea").textContent = "—";
+    $("scoreArea").style.display = "none";
+    $("summaryPre").textContent = "";
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // --------------------
+  // Wiring
+  // --------------------
+  $("btnSetDoc").onclick = () => setDocId($("docId").value.trim());
+
+  $("baseUrl").addEventListener("change", (e) => setBaseUrl(e.target.value.trim()));
+
+  $("btnHealth").onclick = async () => {
+    try {
+      setBaseUrl($("baseUrl").value.trim() || state.baseUrl);
+      const data = await fetchJson("GET", "/", null);
+      $("healthStatus").innerHTML = `<span class="ok">OK</span> <span class="tiny mono">${escapeHtml(pretty(data))}</span>`;
+      setRaw(data);
+    } catch (e) {
+      $("healthStatus").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnRagMetaExample").onclick = () => {
+    $("ragMeta").value = JSON.stringify({
+      domain: "product_description",
+      document_type: "strategy",
+      source: "manual",
+      title: "마케팅 4C/4P",
+      type: "policy"
+    }, null, 2);
+  };
+
+  $("btnRagUpload").onclick = async () => {
+    try {
+      const text = $("ragText").value.trim();
+      if (!text) throw new Error("RAG text is empty");
+
+      let meta = null;
+      const metaStr = $("ragMeta").value.trim();
+      if (metaStr) meta = JSON.parse(metaStr);
+
+      const data = await fetchJson("POST", "/rag/documents", { text, metadata: meta });
+      setRaw(data);
+      $("ragUploadResult").innerHTML = `<span class="ok">OK</span> doc_id=<span class="mono">${escapeHtml(data.doc_id || "")}</span> dim=${escapeHtml(String(data.embedding_dim ?? ""))}`;
+    } catch (e) {
+      $("ragUploadResult").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnCreateText").onclick = async () => {
+    try {
+      const text = $("docText").value;
+      if (!text.trim()) throw new Error("Document text is empty");
+      const data = await fetchJson("POST", "/document/text", { text });
+      setRaw(data);
+      if (data.document_id) setDocId(data.document_id);
+      $("docCreateResult").innerHTML = `<span class="ok">OK</span> document_id=<span class="mono">${escapeHtml(data.document_id || "")}</span>`;
+    } catch (e) {
+      $("docCreateResult").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnClearText").onclick = () => $("docText").value = "";
+
+  $("btnCreateImage").onclick = async () => {
+    try {
+      const f = $("docImage").files?.[0];
+      if (!f) throw new Error("Select an image first");
+      const data = await fetchUpload("/document/image", f);
+      setRaw(data);
+      if (data.document_id) setDocId(data.document_id);
+      $("docCreateResult").innerHTML = `<span class="ok">OK</span> document_id=<span class="mono">${escapeHtml(data.document_id || "")}</span> (OCR)`;
+    } catch (e) {
+      $("docCreateResult").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnGetDoc").onclick = async () => {
+    try {
+      const id = $("docId").value.trim();
+      if (!id) throw new Error("Set document_id first");
+      const data = await fetchJson("GET", `/document/${encodeURIComponent(id)}`, null);
+      setRaw(data);
+      $("docArea").innerHTML = renderDoc(data);
+    } catch (e) {
+      $("docArea").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnAnalyze").onclick = async () => {
+    try {
+      const id = $("docId").value.trim();
+      if (!id) throw new Error("Set document_id first");
+      const data = await fetchJson("POST", `/document/${encodeURIComponent(id)}/sentences/analyze`, null);
+      setRaw(data);
+      $("sentencesArea").innerHTML = renderSentences(data);
+    } catch (e) {
+      $("sentencesArea").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnGetSentences").onclick = async () => {
+    try {
+      const id = $("docId").value.trim();
+      if (!id) throw new Error("Set document_id first");
+      const data = await fetchJson("GET", `/document/${encodeURIComponent(id)}/sentences`, null);
+      setRaw(data);
+      $("sentencesArea").innerHTML = renderSentences(data);
+    } catch (e) {
+      $("sentencesArea").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnEvaluate").onclick = async () => {
+    try {
+      const id = $("docId").value.trim();
+      if (!id) throw new Error("Set document_id first");
+      const data = await fetchJson("POST", `/document/${encodeURIComponent(id)}/evaluate`, null);
+      setRaw(data);
+      renderScores(data);
+      $("issuesArea").innerHTML = renderIssues(data);
+    } catch (e) {
+      $("issuesArea").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnAnalyzeThenEvaluate").onclick = async () => {
+    try {
+      const id = $("docId").value.trim();
+      if (!id) throw new Error("Set document_id first");
+      await fetchJson("POST", `/document/${encodeURIComponent(id)}/sentences/analyze`, null);
+      const data = await fetchJson("POST", `/document/${encodeURIComponent(id)}/evaluate`, null);
+      setRaw(data);
+      renderScores(data);
+      $("issuesArea").innerHTML = renderIssues(data);
+      // also refresh sentences view
+      const sData = await fetchJson("GET", `/document/${encodeURIComponent(id)}/sentences`, null);
+      $("sentencesArea").innerHTML = renderSentences(sData);
+    } catch (e) {
+      $("issuesArea").innerHTML = `<span class="bad">FAIL</span>`;
+      setErr(e);
+    }
+  };
+
+  $("btnClearOut").onclick = () => {
+    clearErr();
+    clearOutput();
+  };
+
+  // initial UI state
+  clearOutput();
+</script>
+</body>
+</html>
